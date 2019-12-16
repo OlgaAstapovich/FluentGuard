@@ -1,0 +1,390 @@
+﻿extern "C" {
+#include "sc_memory_headers.h"
+#include "sc_helper.h"
+#include "utils.h"
+}
+
+#include <stdio.h>
+#include <iostream>
+#include <glib.h>
+#include <unistd.h>
+#include <assert.h>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+sc_memory_context *context;
+
+//graph - узел графа
+//rrel_nodes узел ролевого отношения вершина'
+//rrel_arcs узел ролевого отношения дуга'
+//arcs множество всех дуг
+sc_addr graph, rrel_arcs, rrel_nodes, arcs;
+
+vector<vector<sc_addr> > chains; //все пути в графе
+
+vector<sc_addr> vertices;	//все вершины
+
+vector<vector<sc_addr> > minChains; 	//все минимальные расстояния от вершины V до остальных вершин
+
+vector<vector<sc_addr> > eccentricities; //Эксцетрититеты вершин
+
+vector<sc_addr> getAllVertices();	//функция, которая находит все вершины
+
+void radius(char);	//функция нахождения радиуса (в качестве аргумента передаем номер графа)
+
+void getMinChain(); //функция, находящая минимальные пути между вершинами
+
+void getEccentricity(); //Функция нахождение эксцентрититетов среди минимальных путей от вершины V
+
+void getRadius();	//функция нахождения максимального пути(среди всех минимальных путей)
+
+void DFSchain(sc_addr , sc_addr , int *, vector<sc_addr>);	//Поиск в глубину (находит все простые пути)
+
+int getIndex(sc_addr);	//Получение номера вершины во множестве vertices
+
+int getWeight(sc_addr, sc_addr); //Получение веса дуги (в качестве аргумента передаем начало и конец дуги)
+
+int toInt(sc_addr);	//получение узла веса как число
+
+int main()
+{
+    sc_memory_params params;
+
+    sc_memory_params_clear(&params);
+    params.repo_path = "/home/%username%/ostis/kb.bin";
+    params.config_file = "/home/%username%/ostis/config/sc-web.ini";
+    params.ext_path = "/home/%username%/ostis/sc-machine/bin/extensions";
+    params.clear = SC_FALSE;
+
+    sc_memory_initialize(&params);
+
+    context = sc_memory_context_new(sc_access_lvl_make_max);
+
+    cout<<"G0:";
+    radius('0');
+    cout<<endl;
+
+    cout<<"G1:";
+    radius('1');
+    cout<<endl;
+
+    cout<<"G2:";
+    radius('2');
+    cout<<endl;
+
+    cout<<"G3:";
+    radius('3');
+    cout<<endl;
+
+    cout<<"G4:";
+    radius('4');
+    cout<<endl;
+
+    sc_memory_context_free(context);
+
+    sc_memory_shutdown(SC_TRUE);
+
+    return 0;
+}
+
+//Функция нахождения все вершин
+vector<sc_addr> getAllVertices(){
+    vector<sc_addr> vertices;
+
+    //Итератор поиска множества всех узлов
+    sc_iterator5 *sc_vertices = sc_iterator5_f_a_a_a_f_new(context,
+                             graph,
+                             sc_type_arc_pos_const_perm,
+                             0,
+                             sc_type_arc_pos_const_perm,
+                             rrel_nodes);
+
+    if (SC_TRUE == sc_iterator5_next(sc_vertices)) {
+        sc_addr set_vertexes = sc_iterator5_value(sc_vertices, 2);	//множество всех вершин
+        //Итератор поиска всех вершин
+        sc_iterator3 *it_vertex = sc_iterator3_f_a_a_new(context,
+                                  set_vertexes,
+                                  sc_type_arc_pos_const_perm,
+                                  0);
+        while (SC_TRUE == sc_iterator3_next(it_vertex)) {
+            sc_addr curr_vertex = sc_iterator3_value(it_vertex, 2);	//Текущая найденная вершина
+            vertices.push_back(curr_vertex);	//Добавление найденной вершины во множество всех вершин
+        }
+        sc_iterator3_free(it_vertex);	//очищение памяти от 3-элементного итератора
+    }
+    sc_iterator5_free(sc_vertices);	//очишение памяти от 5-элементного итератора
+    return vertices;
+}
+
+//Функция нахождение радиуса графа
+void radius(char name_graph) {
+
+    char gr[3] = "Gx";	//Название графа
+    gr[1] = name_graph;
+
+    //Занесение всех узлов в переменные c++
+    sc_helper_resolve_system_identifier(context, gr, &graph);
+    sc_helper_resolve_system_identifier(context, "rrel_arcs", &rrel_arcs);
+    sc_helper_resolve_system_identifier(context, "rrel_nodes", &rrel_nodes);
+
+    //5-элементный итератор поиска множества дуг
+    sc_iterator5 *it_arcs = sc_iterator5_f_a_a_a_f_new(context,
+                             graph,
+                             sc_type_arc_pos_const_perm,
+                             0,
+                             sc_type_arc_pos_const_perm,
+                             rrel_arcs);
+
+    if (SC_TRUE == sc_iterator5_next(it_arcs)) {
+        arcs = sc_iterator5_value(it_arcs, 2);	//Занесение множества всех дуг в переменную arcs
+    }
+    sc_iterator5_free(it_arcs);
+
+    vertices = getAllVertices();	//Заполнение множества всех вершин
+
+    int V = vertices.size();	//V - количество вершин
+    int *color = new int[V];	//Массив, который содержит данные о посещении вершин (1 - вершина не посещена, 2 - вершина посещена)
+
+    //Вызов функции поиска всех путей
+    for (int i = 0 ; i < V; i++){
+        for (int j = 0; j < V; j++)
+        {
+            if(i != j)
+            {
+                for (int k = 0; k < V; k++) {
+                    color[k] = 1;
+                }
+                vector<sc_addr> simpleChain;
+                simpleChain.push_back(vertices[i]);	//Вставка первой вершины в путь
+                DFSchain(vertices[i],vertices[j], color, simpleChain);
+                getMinChain();	//Нахождние минимального путя между i и j вершиной
+            }
+        }
+        getEccentricity();
+    }
+
+    getRadius();//Вызов функции нахождения радиуса среди эксцентрититетов
+    vertices.clear();
+}
+
+//Функция нахождения минимального пути
+void getMinChain()
+{
+    if(chains.size() == 0) //Проверка на случай, если не было найдено ни одной цепи
+    {
+        return;
+    }
+    int minWeigth = 99999;
+    int index = 0;	//индекс минимальной вершины
+
+    //Цикл нахождения минимального путя
+    for(int i = 0; i < chains.size(); i++)
+    {
+        int weigth = 0;
+        for(int j = 0; j < chains[i].size() - 1; j++)
+        {
+            weigth += getWeight(chains[i][j],chains[i][j+1]);
+        }
+        if(minWeigth > weigth)
+        {
+            minWeigth = weigth;
+            index = i;
+        }
+    }
+
+    minChains.push_back(chains[index]);	//добавление найденного путя во множество всех минимальных путей
+
+    chains.clear(); //очистка найденных путей
+}
+
+void getEccentricity()
+{
+    if(minChains.size() == 0) //Проверка на случай, если не было найдено ни одной цепи
+    {
+        return;
+    }
+
+    int maxWeight = -1;
+    int index = 0;
+    for(int i = 0; i < minChains.size(); i++)
+    {
+        int weigth = 0;
+        for(int j = 0; j < minChains[i].size() - 1; j++)
+        {
+            weigth +=getWeight(minChains[i][j],minChains[i][j+1]);
+        }
+        if(maxWeight < weigth)
+        {
+            maxWeight = weigth;
+            index = i;
+        }
+    }
+
+    eccentricities.push_back(minChains[index]); //добавление найденного путя во множество всех эксцентрититетов
+
+    minChains.clear(); //очистка всех путей
+}
+
+//функция нахождения радиуса
+void getRadius()
+{
+    if(eccentricities.size() == 0) //Проверка на случай, если не было найдено ни одной цепи
+    {
+        return;
+    }
+
+    int radiusValue = 99999;
+    int index = 0;
+    for(int i = 0; i < eccentricities.size(); i++)
+    {
+        int weigth = 0;
+        for(int j = 0; j < eccentricities[i].size() - 1; j++)
+        {
+            weigth +=getWeight(eccentricities[i][j],eccentricities[i][j+1]);
+        }
+        if(radiusValue > weigth)
+        {
+            radiusValue = weigth;
+            index = i;
+        }
+    }
+    //Вывод радиуса графа
+    cout<<"Radius: ";
+    for(int i = 0; i < eccentricities[index].size() - 1; i++)
+    {
+       printEl(context, eccentricities[index][i]);
+       cout<<"=>";
+       if(i == eccentricities[index].size() - 2 ) printEl(context, eccentricities[index][i+1]);
+    }
+    cout<<" value of radius = "<<radiusValue;
+
+    eccentricities.clear();
+}
+
+//Функция нахождения всех путей между вершинами u и endV, где u - начальная вершина, а endV - конечная
+//simpleChain хранит вершины путя
+void DFSchain(sc_addr u, sc_addr endV, int *color, vector<sc_addr> simpleChain) {
+    //Если конец и начало пути не совпадают, то помечаем начальную вершину посещенной
+    if (!SC_ADDR_IS_EQUAL(u, endV)) {
+        color[getIndex(u)] = 2;
+    }
+    //Если конец и начало пути совпадают, то заносим путь во множество всех путей
+    if(SC_ADDR_IS_EQUAL(u, endV)) {
+        chains.push_back(simpleChain);
+        return;
+    }
+
+    //Поиск всех смежных вершин в направлении u => смежная вершина
+    sc_iterator5 *it_vertex = sc_iterator5_f_a_a_a_f_new(context,
+                              u,
+                              sc_type_edge_common,
+                              0,
+                              sc_type_arc_pos_const_perm,
+                              arcs);
+    //Поиск всех смежных вершин в направлении u <= смежная вершина
+    sc_iterator5 *it_vertex_2 = sc_iterator5_a_a_f_a_f_new(context,
+                              0,
+                              sc_type_edge_common,
+                              u,
+                              sc_type_arc_pos_const_perm,
+                              arcs);
+
+    while (SC_TRUE == sc_iterator5_next(it_vertex)) {
+
+        sc_addr anotherVertex = sc_iterator5_value(it_vertex, 2);	//Смежная вершина
+
+        //Если смежная вершина не посещена, то добавляем ее в путь и рекурсивно ищем продолжение пути
+        if (color[getIndex(anotherVertex)] == 1) {
+            vector<sc_addr> alternative = simpleChain;
+            alternative.push_back(anotherVertex);
+            DFSchain(anotherVertex, endV, color, alternative);
+            //После нахождения путей, помечаем смежную вершину непосещенной, так как через нее могут лежать другие пути
+            color[getIndex(anotherVertex)] = 1;
+        }
+    }
+    while (SC_TRUE == sc_iterator5_next(it_vertex_2)) {
+
+        sc_addr anotherVertex = sc_iterator5_value(it_vertex_2, 0);	//Смежная вершина
+
+        //Если смежная вершина не посещена, то добавляем ее в путь и рекурсивно ищем продолжение пути
+        if (color[getIndex(anotherVertex)] == 1) {
+            vector<sc_addr> alternative = simpleChain;
+            alternative.push_back(anotherVertex);
+            DFSchain(anotherVertex, endV, color, alternative);
+            //После нахождения путей, помечаем смежную вершину непосещенной, так как через нее могут лежать другие пути
+            color[getIndex(anotherVertex)] = 1;
+        }
+    }
+
+}
+
+//Получение индекса вершины в массиве vertices
+int getIndex(sc_addr vertex){
+    int V = vertices.size();
+    for(int i = 0; i < V; i++){
+        if(SC_ADDR_IS_EQUAL(vertex, vertices[i])){
+            return i;
+        }
+    }
+    return -1;
+}
+
+//Получение веса дуги
+int getWeight(sc_addr v1, sc_addr v2){
+    //нахождение вершины, которая содержит вес дуги (при этом ищем в направлении V1 => V2)
+    sc_iterator5 *it = sc_iterator5_f_a_f_a_a_new(context,
+                             v1,
+                             sc_type_edge_common,
+                             v2,
+                             sc_type_arc_common,
+                             0);
+    //нахождение вершины, которая содержит вес дуги (при этом ищем в направлении V2 => V1)
+    sc_iterator5 *it_2 = sc_iterator5_f_a_f_a_a_new(context,
+                             v2,
+                             sc_type_edge_common,
+                             v1,
+                             sc_type_arc_common,
+                             0);
+    int weight = 0;
+    if (SC_TRUE == sc_iterator5_next(it)) {
+        sc_addr node_weight = sc_iterator5_value(it, 4);
+        weight = toInt(node_weight);
+    }
+    if (SC_TRUE == sc_iterator5_next(it_2)) {
+        sc_addr node_weight = sc_iterator5_value(it_2, 4);
+        weight = toInt(node_weight);
+    }
+    sc_iterator5_free(it);
+    sc_iterator5_free(it_2);
+    return weight;
+}
+
+//Преобразование идентификатора вершины в число
+int toInt(sc_addr element){
+    int number = 0;
+    sc_addr idtf;
+    sc_type type;
+    sc_memory_get_element_type(context, element, &type);
+
+    if ((sc_type_node & type) == sc_type_node)
+    {
+
+        if (SC_RESULT_OK == sc_helper_get_system_identifier_link(context, element, &idtf))
+        {
+            sc_stream *stream;
+            sc_uint32 length = 0, read_length = 0;
+            sc_char *data;
+            sc_memory_get_link_content(context, idtf, &stream);
+            sc_stream_get_length(stream, &length);
+            data = (sc_char *)calloc(length + 1, sizeof(sc_char));
+            sc_stream_read_data(stream, data, length, &read_length);
+            data[length] = '\0';
+            number = atoi(data);
+            sc_stream_free(stream);
+            free(data);
+        }
+    }
+    return number;
+}
