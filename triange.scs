@@ -1,0 +1,103 @@
+
+concept_triange<-sc_node_not_relation;=> nrel_main_idtf: [треугольник](*<- lang_ru;;*);;
+concept_geometric_point<-sc_node_not_relation;=> nrel_main_idtf: [геометрическая точка](*<- lang_ru;;*);;
+concept_unknow_value<-sc_node_not_relation;=> nrel_main_idtf: [невычисленная величина](*<- lang_ru;;*);;
+concept_quadrangle<-sc_node_not_relation;=> nrel_main_idtf: [четырехугольник](*<-lang_ru;;*);;
+concept_straight_line<-sc_node_not_relation;=> nrel_main_idtf: [прямая](*<- lang_ru;;*);;
+concept_segment<-sc_node_not_relation;=> nrel_main_idtf: [отрезок](*<- lang_ru;;*);;
+concept_area<-sc_node_not_relation;=> nrel_main_idtf: [площадь](*<- lang_ru;;*);;
+concept_value<-sc_node_not_relation;=> nrel_main_idtf: [величина](*<- lang_ru;;*);;
+concept_S1<-sc_node_not_relation;=> nrel_main_idtf: [S1](*<- lang_ru;;*);;
+concept_S2<-sc_node_not_relation;=> nrel_main_idtf: [S2](*<- lang_ru;;*);;
+concept_S3<-sc_node_not_relation;=> nrel_main_idtf: [S3](*<- lang_ru;;*);;
+concept_x<-sc_node_not_relation;=> nrel_main_idtf: [x](*<- lang_ru;;*);;
+concept_a<-sc_node_not_relation;=> nrel_main_idtf: [a](*<- lang_ru;;*);;
+concept_b<-sc_node_not_relation;=> nrel_main_idtf: [b](*<- lang_ru;;*);;
+concept_c<-sc_node_not_relation;=> nrel_main_idtf: [c](*<- lang_ru;;*);;
+
+nrel_inclusion<-sc_node_norole_relation;=> nrel_main_idtf: [включение*](*<- lang_ru;;*);;
+nrel_boundary_point<-sc_node_norole_relation;=> nrel_main_idtf: [граничная точка*](*<- lang_ru;;*);;
+nrel_parallelism<-sc_node_norole_relation;=> nrel_main_idtf: [параллельность*](*<- lang_ru;;*);;
+nrel_crossing<-sc_node_norole_relation;=> nrel_main_idtf: [пересечение*](*<- lang_ru;;*);;
+nrel_inner_point<-sc_node_norole_relation;=> nrel_main_idtf: [внутрення точка*](*<- lang_ru;;*);;
+nrel_side<-sc_node_norole_relation;=> nrel_main_idtf: [сторона*](*<- lang_ru;;*);;
+
+triangle=
+[*
+concept_triange->ABC;;
+concept_triange->EOD;;
+concept_triange->FGO;;
+concept_triange->OHL;;
+concept_quadrangle->CDOL;EAFO;GBHO;;
+concept_geometric_point->O;;
+concept_geometric_point->F;D;H;;
+concept_geometric_point->G;E;L;;
+concept_straight_line->m;n;k;;
+concept_straight_line->l;s;t;;
+concept_segment->EO;OD;FG;GO;OH;HL;DE;OF;LO;EA;AF;LC;CD;GB;BH;;
+
+ABC=>nrel_side:AB;AC;BC;;
+nrel_inner_point->(ABC=>O);;
+
+nrel_inclusion->(l=>AB);;
+nrel_inclusion->(s=>AC);;
+nrel_inclusion->(t=>BC);;
+
+nrel_parallelism->(m<=>l);;
+nrel_parallelism->(n<=>s);;
+nrel_parallelism->(k<=>t);;
+
+EA=>nrel_boundary_point:E;A;;
+AF=>nrel_boundary_point:A;F;;
+LC=>nrel_boundary_point:L;C;;
+CD=>nrel_boundary_point:C;D;;
+GB=>nrel_boundary_point:G;B;;
+BH=>nrel_boundary_point:B;H;;
+
+EO=>nrel_boundary_point:E;O;;
+OD=>nrel_boundary_point:O;D;;
+DE=>nrel_boundary_point:D;E;;
+FG=>nrel_boundary_point:F;G;;
+GO=>nrel_boundary_point:G;O;;
+OF=>nrel_boundary_point:O;F;;
+OH=>nrel_boundary_point:O;H;;
+LO=>nrel_boundary_point:L;O;;
+HL=>nrel_boundary_point:H;L;;
+
+
+nrel_side->(EOD=>EO);;
+nrel_side->(EOD=>OD);;
+nrel_side->(EOD=>DE);;
+nrel_side->(FGO=>FG);;
+nrel_side->(FGO=>GO);;
+nrel_side->(FGO=>OF);;
+nrel_side->(OHL=>OH);;
+nrel_side->(OHL=>HL);;
+nrel_side->(OHL=>LO);;
+
+nrel_side->(CDOL=>CD);;
+nrel_side->(CDOL=>OD);;
+nrel_side->(CDOL=>LO);;
+nrel_side->(CDOL=>LC);;
+nrel_side->(EAFO=>EA);;
+nrel_side->(EAFO=>AF);;
+nrel_side->(EAFO=>OF);;
+nrel_side->(EAFO=>EO);;
+nrel_side->(GBHO=>GB);;
+nrel_side->(GBHO=>BH);;
+nrel_side->(GBHO=>OH);;
+nrel_side->(GBHO=>GO);;
+
+concept_area->concept_S1;concept_S2;concept_S3;concept_a;concept_b;concept_c;;
+concept_value->concept_S1;concept_S2;concept_S3;concept_a;concept_b;concept_c;;
+concept_S1->EOD;;
+concept_S2->FGO;;
+concept_S3->OHL;;
+concept_a->CDOL;;
+concept_b->EAFO;;
+concept_c->GBHO;;
+
+concept_unknow_value->concept_x;;
+concept_area->concept_x;;
+concept_x->ABC;;
+*];;

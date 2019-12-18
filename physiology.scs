@@ -1,0 +1,54 @@
+concept_physiology<-sc_node_not_relation;;
+
+concept_physiology => nrel_main_idtf: [физиолоогия](*<- lang_ru;;*);;
+concept_physiology => nrel_main_idtf: [physiology](*<- lang_en;;*);;
+
+
+definition -> ...
+(*
+    -> rrel_key_sc_element: concept_physiology;;
+    <= nrel_sc_text_translation:...
+        (*
+            -> [Физиология — наука о сущности живого, жизни в норме и при патлогиях,то есть о закономернотсях функционирования и регуляции биологических систем разного уровня организации.](*<- lang_ru;;*);;
+        *);;
+    => nrel_main_idtf: [Опр.(физиология)](*<- lang_ru;;*);;
+    => nrel_using_constants: ...
+        (*
+	    -> concept_science;;
+	    -> concept_essence;;
+	    -> concept_life;;
+	    -> concept_regularity;;
+	    -> concept_oraganization;;
+
+        *);;
+*);;
+
+
+
+
+
+statement -> ...
+(*
+  
+    -> rrel_key_sc_element: concept_physiology;;
+    <= nrel_sc_text_translation:...
+        (*
+            -> [ Физиология представляет собой комплекс естествонаучных дисциплин, изучающих как жизнедеятельность организма в целом, так и отдельных систем и процессов. органов, клеток, клеточных структур. ](*<- lang_ru;;*);;
+        *);;
+    => nrel_main_idtf: [Утв.(физиология)](*<- lang_ru;;*);;
+  => nrel_using_constants: ...
+        (*
+	    -> concept_complex;;
+	    -> concept_discipline;;
+	    -> concept_life_activity;;
+	    -> concept_organism;;
+	    -> concept_organ;;
+	    -> concept_cell;;
+
+
+        *);;
+*);;
+
+concept_science=>nrel_inclusion:concept_physiology;;
+concept_physiology->rrel_example:concept_human_physiology;;
+
